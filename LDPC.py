@@ -4,7 +4,6 @@
 # Communication Lab - Chapter: Channel Coding
 ####################################################
 import numpy as np
-# import galois
 
 class LDPC_code:
     """
@@ -32,11 +31,6 @@ class LDPC_code:
         self.ONE = 0.9999999999999 # For clipping before arctanh to avoid numerical instabilities.
         self.c2v_cview = np.empty((self.m, self.dc_max))
         self.c2v_vview = np.zeros((self.n, self.dv_max))
-
-    # @classmethod
-    # def fromGeneratorMatrix(cls, G):
-    #     GF = galois.GF(2)
-    #     return cls(GF(G).null_space())
 
     @classmethod
     def fromAlistFile(cls, alist_filename):
@@ -113,20 +107,22 @@ class LDPC_code:
         one = float('inf') if max_product else 1
 
         # Initialization.
-        self.v2c = np.ones((self.m, self.dc_max)) * one # previous v2c messages (channel LLR excluded)
-        self.v2c[self.c_mask] = np.zeros(self.num_edges)
-        self.v2c[self.c_mask] = input_LLR[self.col]
+        v2c = np.ones((self.m, self.dc_max)) * one # previous v2c messages (channel LLR excluded)
+        v2c[self.c_mask] = np.zeros(self.num_edges)
+        v2c[self.c_mask] = input_LLR[self.col]
+
+        previous_v2c = np.ones_like(v2c) * float('nan') # previous v2c messages to examine convergence
 
         for it in range(iters): # SPA iterations.
             # CN update.
             if max_product:
                 for check_node_port in range(self.dc_max):
-                    extrinsic = np.delete(self.v2c, check_node_port, axis=1)
+                    extrinsic = np.delete(v2c, check_node_port, axis=1)
                     self.c2v_cview[:,check_node_port] = np.prod(np.sign(extrinsic), axis=1) * np.min(np.abs(extrinsic), axis=1)
             else:
-                self.v2c[self.c_mask] = np.tanh(self.v2c[self.c_mask]/2)
+                v2c[self.c_mask] = np.tanh(v2c[self.c_mask]/2)
                 for check_node_port in range(self.dc_max):
-                    self.c2v_cview[:,check_node_port] = np.prod(np.delete(self.v2c, check_node_port, axis=1), axis=1)
+                    self.c2v_cview[:,check_node_port] = np.prod(np.delete(v2c, check_node_port, axis=1), axis=1)
                 self.c2v_cview[self.c_mask] = 2*np.arctanh(np.clip(self.c2v_cview[self.c_mask], -self.ONE, self.ONE))
     
             # Reshape messages from check2variable nodes to variable view.
@@ -135,12 +131,12 @@ class LDPC_code:
             # Total LLR.
             marginal = np.sum(self.c2v_vview, axis=1)
             output_LLR = marginal + input_LLR
-            # Check if hard decision already fulfils all parity checks.
-#            if not np.any((self.H @ ((np.sign(output_LLR)-1)/(-2))) % 2):
-#                return (output_LLR, it)
-    
             # VN Update.
-            self.v2c[self.c_mask] = np.take_along_axis((output_LLR[:,None] - self.c2v_vview)[self.v_mask], self.v2c_reshape, axis=0)
+            v2c[self.c_mask] = np.take_along_axis((output_LLR[:,None] - self.c2v_vview)[self.v_mask], self.v2c_reshape, axis=0)
+
+            # check for convergence of messages
+            # TODO: think about normalization for meaningful epsilon and mathematically clean convergence condition
+
         return (output_LLR, -1)
     
     def decode_awgn(self, rx, esn0_lin, iters, max_product=False):

@@ -58,7 +58,6 @@ class TestLDPC(unittest.TestCase):
         TODO: account for tie (case if MAP has no single maximum)
         '''
         # compute Blockwise-MAP estimate
-
         correlations = self.rx @ self.bpsk_cws.T # shape (num_cws, 2**k)
         map_estimate = self.codewords[np.argmax(correlations, axis=1)] # shape (num_cws, n)
 
@@ -93,7 +92,7 @@ class TestLDPC(unittest.TestCase):
         iters = np.empty(self.rx.shape[0])
         for (i, y) in enumerate(self.rx):
             (llrs[i,:], iters[i]) = self.code.decode_awgn(y, self.EsN0_lin, self.spa_iters, max_product=False)
-        spa_assignment = 0.5*(1-np.sign(llrs)) # Hard decision on LLRs.
+        spa_assignment = llrs < 0 # Hard decision on LLRs.
 
         # compare
         mpa_unequal_map = np.count_nonzero(np.logical_xor(map_estimate, spa_assignment), axis=1) > 0 # shape (num_cws)
