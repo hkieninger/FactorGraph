@@ -93,16 +93,16 @@ class LDPC_code:
         v_mask[row_vview, col_vview] = True # Mask, which contains the valid entries of the variable node view.1
         return row, col, c_mask, c2v_reshape, v_mask, v2c_reshape
 
-    def decode_bsc(self, rx_bits, epsilon, iters, max_product=False):
+    def decode_bsc(self, rx_bits, epsilon, max_iters, max_product=False):
         """
         For given BSC(epsilon) channel, run 'iters' iterations of the BP algorithm.
         """
         # Channel parameter for LLR computation.
         Lc = np.log((1-epsilon)/epsilon)
-        return self.spa((-1)**rx_bits * Lc, iters, max_product)
+        return self.spa((-1)**rx_bits * Lc, max_iters, max_product)
         
-    def spa(self, input_LLR, iters, max_product=False):
-        assert iters > 0
+    def spa(self, input_LLR, max_iters, max_product=False):
+        assert max_iters > 0
 
         one = float('inf') if max_product else 1
 
@@ -113,7 +113,7 @@ class LDPC_code:
 
         previous_v2c = np.ones_like(v2c) * float('nan') # previous v2c messages to examine convergence
 
-        for it in range(iters): # SPA iterations.
+        for it in range(max_iters): # SPA iterations.
             # CN update.
             if max_product:
                 for check_node_port in range(self.dc_max):
@@ -131,15 +131,16 @@ class LDPC_code:
             # Total LLR.
             marginal = np.sum(self.c2v_vview, axis=1)
             output_LLR = marginal + input_LLR
+            yield output_LLR
+
             # VN Update.
             v2c[self.c_mask] = np.take_along_axis((output_LLR[:,None] - self.c2v_vview)[self.v_mask], self.v2c_reshape, axis=0)
 
             # check for convergence of messages
             # TODO: think about normalization for meaningful epsilon and mathematically clean convergence condition
 
-        return (output_LLR, -1)
     
-    def decode_awgn(self, rx, esn0_lin, iters, max_product=False):
+    def decode_awgn(self, rx, esn0_lin, max_iters, max_product=False):
         Lc = 4 * esn0_lin
-        return self.spa(Lc * rx, iters, max_product)
+        return self.spa(Lc * rx, max_iters, max_product)
 
