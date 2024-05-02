@@ -129,13 +129,27 @@ class LDPC_code:
             # VN Update.
             v2c[self.c_mask] = np.take_along_axis((output_LLR[:,None] - self.c2v_vview)[self.v_mask], self.v2c_reshape, axis=0)
 
-    def decode_awgn(self, rx, esn0_lin, max_iters, max_product=False):
+    def decode_awgn(self, rx, esn0_lin, max_iters, convergence_threshold=1e-6, max_product=False):
+        '''
+        run spa on rx
+        @return: wether spa converged and LLR for the bits
+        '''
         Lc = 4 * esn0_lin
-        spa_generator = self.spa(Lc * rx, max_product)
+        input_LLR = Lc * rx
+        spa_generator = self.spa(input_LLR, max_product)
+
         prev_c2v = next(spa_generator)
-        for i, c2v in zip(range(max_iters-1), spa_generator):
-            yield np.max(np.abs(c2v[self.v_mask] - prev_c2v[self.v_mask]))
+        iter_cnt = 1
+        while iter_cnt < max_iters:
+            c2v = next(spa_generator)
+            epsilon = np.max(np.abs(c2v[self.v_mask] - prev_c2v[self.v_mask]))
             prev_c2v = c2v
+            if epsilon < convergence_threshold:
+                break
+            iter_cnt += 1
+        
+        output_LLR =  np.sum(c2v, axis=1) + input_LLR
+        return (output_LLR, iter_cnt)
             
         
             
