@@ -30,12 +30,13 @@ def estimate_ber(code, num_bits, EbN0_list, mpa=False):
     # Generate random input bits.
     info_bits = np.random.randint(2, size=(num_cws, k))
     # Encoder
-    code_bits = info_bits.dot(code.G) % 2
+    code_bits = info_bits.dot(code.G) % 2 # shape (num_cws, n)
     # BPSK mapping.
     tx = (-1) ** np.array(code_bits)
     
     # Loop over Eb/N0 values.
     ber = np.empty(EbN0_list.size)
+    fer = np.empty(EbN0_list.size)
     converged = np.empty(EbN0_list.size)
     for k, EbN0 in enumerate(EbN0_list):
         EsN0_lin = r * 10**(EbN0/10)
@@ -49,32 +50,37 @@ def estimate_ber(code, num_bits, EbN0_list, mpa=False):
     
         # Determine BER.
         dec_bits = 0.5*(1-np.sign(llrs)) # Hard decision on LLRs.
-        ber[k] = np.count_nonzero(np.logical_xor(code_bits, dec_bits)) / num_codebits
+        errors = np.logical_xor(code_bits, dec_bits)
+        fer[k] = np.sum(np.count_nonzero(errors, axis=1) > 0) / num_cws
+        ber[k] = np.count_nonzero(errors) / num_codebits
         converged_idx = (iters < spa_iters)
         converged_count = np.count_nonzero(converged_idx)
         converged[k] = converged_count / num_cws
 
-    return (ber, converged)
+    return (ber, fer, converged)
 
 # Load LDPC codes.
 code1 = LDPC.LDPC_code.fromAlistFile(os.path.join(os.path.dirname(__file__),"WiGig1.alist"))
 code2 = LDPC.LDPC_code.fromAlistFile(os.path.join(os.path.dirname(__file__),"WiGig2.alist"))
+code = code1
 
 # Simulation parameters
 num_bits = 100000
-spa_iters = 5
-EbN0_list = np.arange(2,5,0.5)
+spa_iters = 20
+EbN0_list = np.arange(0,4,0.5)
 
-ber_mpa, converged_mpa = estimate_ber(code1, num_bits, EbN0_list, mpa=True)
-ber_spa, converged_spa = estimate_ber(code1, num_bits, EbN0_list)
+ber_mpa, fer_mpa, converged_mpa = estimate_ber(code, num_bits, EbN0_list, mpa=True)
+ber_spa, fer_spa, converged_spa = estimate_ber(code, num_bits, EbN0_list)
 
 # Plot.
 fig, ax = plt.subplots(num="Transmission Block Code")
 ax.semilogy(EbN0_list, ber_mpa)
+ax.semilogy(EbN0_list, fer_mpa)
 ax.semilogy(EbN0_list, converged_mpa)
 ax.semilogy(EbN0_list, ber_spa)
+ax.semilogy(EbN0_list, fer_spa)
 ax.semilogy(EbN0_list, converged_spa)
-plt.legend(['code mpa', 'converged mpa', 'code spa', 'converged spa'])
+plt.legend(['ber mpa', 'fer mpa', 'converged mpa', 'ber spa', 'fer spa', 'converged spa'])
 
 plt.xlabel(r"$E_\mathrm{b}/N_0$ (dB)", fontsize=16)
 plt.ylabel("BER",fontsize=14)
