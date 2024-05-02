@@ -45,7 +45,7 @@ def estimate_ber(code, num_bits, EbN0_list, mpa=False):
         iters = np.empty(tx.shape[0])
         # Decode.
         for (i, y) in enumerate(rx):
-            (llrs[i,:], iters[i]) = code.decode_awgn(y, EsN0_lin, spa_iters, mpa)
+            (llrs[i,:], iters[i]) = code.decode_awgn(y, EsN0_lin, spa_iters, max_product=mpa)
     
         # Determine BER.
         dec_bits = 0.5*(1-np.sign(llrs)) # Hard decision on LLRs.
@@ -62,7 +62,7 @@ code2 = LDPC.LDPC_code.fromAlistFile(os.path.join(os.path.dirname(__file__),"WiG
 
 # Simulation parameters
 num_bits = 100000
-spa_iters = 10
+spa_iters = 5
 EbN0_list = np.arange(2,5,0.5)
 
 ber_mpa, converged_mpa = estimate_ber(code1, num_bits, EbN0_list, mpa=True)

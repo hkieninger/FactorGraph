@@ -144,7 +144,11 @@ class LDPC_code:
             c2v = next(spa_generator)
             epsilon = np.max(np.abs(c2v[self.v_mask] - prev_c2v[self.v_mask]))
             prev_c2v = c2v
-            if epsilon < convergence_threshold:
+            # if epsilon < convergence_threshold:
+            #     break
+            output_LLR =  np.sum(c2v, axis=1) + input_LLR
+            # Check if hard decision already fulfils all parity checks.
+            if not np.any((self.H @ ((np.sign(output_LLR)-1)/(-2))) % 2):
                 break
             iter_cnt += 1
         
