@@ -151,9 +151,3 @@ class LDPC_code:
         output_LLR = np.sum(c2v, axis=1) + input_LLR
         return (output_LLR, iter_cnt)
             
-        
-            
-
-
-            
-

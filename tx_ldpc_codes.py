@@ -9,7 +9,7 @@ import numpy as np
 from scipy import special
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-mpl.rcParams.update({'axes.xmargin': 0})
+#mpl.rcParams.update({'axes.xmargin': 0})
 import os
 import LDPC
 
@@ -37,7 +37,12 @@ def estimate_ber(code, num_bits, EbN0_list, mpa=False):
     # Loop over Eb/N0 values.
     ber = np.empty(EbN0_list.size)
     fer = np.empty(EbN0_list.size)
+    ber_converged = np.empty(EbN0_list.size)
+    fer_converged = np.empty(EbN0_list.size)
+    ber_converged_valid = np.empty(EbN0_list.size)
+    fer_converged_valid= np.empty(EbN0_list.size)
     converged = np.empty(EbN0_list.size)
+    converged_valid = np.empty(EbN0_list.size)
     for k, EbN0 in enumerate(EbN0_list):
         EsN0_lin = r * 10**(EbN0/10)
         # Apply AWGN Channel.
@@ -51,38 +56,92 @@ def estimate_ber(code, num_bits, EbN0_list, mpa=False):
         # Determine BER.
         dec_bits = 0.5*(1-np.sign(llrs)) # Hard decision on LLRs.
         errors = np.logical_xor(code_bits, dec_bits)
+
         fer[k] = np.sum(np.count_nonzero(errors, axis=1) > 0) / num_cws
         ber[k] = np.count_nonzero(errors) / num_codebits
+
         converged_idx = (iters < spa_iters)
         converged_count = np.count_nonzero(converged_idx)
         converged[k] = converged_count / num_cws
 
-    return (ber, fer, converged)
+        ber_converged[k] = float('nan') if converged_count == 0 else np.count_nonzero(errors[converged_idx,:]) / (converged_count * n)
+        fer_converged[k] = float('nan') if converged_count == 0 else np.sum(np.count_nonzero(errors[converged_idx,:], axis=1) > 0) / converged_count
+
+        converged_valid_cw_idx = np.logical_and(converged_idx, np.count_nonzero((dec_bits @ code.H.T) % 2, axis=1) == 0)
+        converged_valid_cw_cnt = np.count_nonzero(converged_valid_cw_idx)
+        converged_valid[k] = converged_valid_cw_cnt / num_cws
+
+        ber_converged_valid[k] = float('nan') if converged_valid_cw_cnt == 0 else np.count_nonzero(errors[converged_valid_cw_idx,:]) / (converged_valid_cw_cnt * n)
+        fer_converged_valid[k] = float('nan') if converged_valid_cw_cnt == 0 else np.sum(np.count_nonzero(errors[converged_valid_cw_idx,:], axis=1) > 0) / converged_valid_cw_cnt
+
+    return (ber, fer, converged, ber_converged, fer_converged, converged_valid, ber_converged_valid, fer_converged_valid)
 
 # Load LDPC codes.
-code1 = LDPC.LDPC_code.fromAlistFile(os.path.join(os.path.dirname(__file__),"WiGig1.alist"))
-code2 = LDPC.LDPC_code.fromAlistFile(os.path.join(os.path.dirname(__file__),"WiGig2.alist"))
-code = code1
+code1 = LDPC.LDPC_code.fromAlistFile(os.path.join(os.path.dirname(__file__),"codes/WiGig1.alist"))
+code2 = LDPC.LDPC_code.fromAlistFile(os.path.join(os.path.dirname(__file__),"codes/WiGig2.alist"))
+
+H_hamming= np.array([
+    [1, 0, 1, 0, 1, 0, 1],
+    [0, 1, 1, 0, 0, 1, 1],
+    [0, 0, 0, 1, 1, 1, 1]], dtype=int)
+H_tree = np.array([[1, 0, 1, 0, 0],
+                [0, 1, 1, 0, 1],
+                [0, 0, 0, 1, 1]], dtype=int)
+bch_63_45 = np.load('codes/BCH_63_45.npz')['H']
+istc_39_24 = np.load('codes/ISTC39_24_opt_Nils.npz')['Hopt']
+golay_24_12 = np.load('codes/opt_golay24_12_with_ends_even_more_weights.npz')['Hopt']
+
+code3 = LDPC.LDPC_code(bch_63_45)
+
+code = code3
 
 # Simulation parameters
-num_bits = 100000
+num_bits = 10000
 spa_iters = 20
 EbN0_list = np.arange(0,4,0.5)
 
-ber_mpa, fer_mpa, converged_mpa = estimate_ber(code, num_bits, EbN0_list, mpa=True)
-ber_spa, fer_spa, converged_spa = estimate_ber(code, num_bits, EbN0_list)
+ber_mpa, fer_mpa, converged_mpa, ber_converged_mpa, fer_converged_mpa, converged_valid_mpa, ber_converged_valid_mpa, fer_converged_valid_mpa = estimate_ber(code, num_bits, EbN0_list, mpa=True)
+ber_spa, fer_spa, converged_spa, ber_converged_spa, fer_converged_spa, converged_valid_spa, ber_converged_valid_spa, fer_converged_valid_spa = estimate_ber(code, num_bits, EbN0_list)
 
 # Plot.
-fig, ax = plt.subplots(num="Transmission Block Code")
-ax.semilogy(EbN0_list, ber_mpa)
-ax.semilogy(EbN0_list, fer_mpa)
-ax.semilogy(EbN0_list, converged_mpa)
-ax.semilogy(EbN0_list, ber_spa)
-ax.semilogy(EbN0_list, fer_spa)
-ax.semilogy(EbN0_list, converged_spa)
-plt.legend(['ber mpa', 'fer mpa', 'converged mpa', 'ber spa', 'fer spa', 'converged spa'])
+fig, axes = plt.subplots(4, 1)
+
+axes[0].set_title('BER')
+axes[0].semilogy(EbN0_list, ber_mpa, label='mpa')
+axes[0].semilogy(EbN0_list, ber_spa, label='spa')
+axes[0].semilogy(EbN0_list, ber_converged_mpa, label='mpa converged')
+axes[0].semilogy(EbN0_list, ber_converged_spa, label='spa converged')
+# axes[0].semilogy(EbN0_list, ber_converged_valid_mpa, label='mpa converged valid')
+# axes[0].semilogy(EbN0_list, ber_converged_valid_spa, label='spa converged valid')
+axes[0].grid()
+axes[0].legend()
+
+axes[1].set_title('FER')
+axes[1].semilogy(EbN0_list, fer_mpa, label='mpa')
+axes[1].semilogy(EbN0_list, fer_spa, label='spa')
+axes[1].semilogy(EbN0_list, fer_converged_mpa, label='mpa converged')
+axes[1].semilogy(EbN0_list, fer_converged_spa, label='spa converged')
+# axes[1].semilogy(EbN0_list, fer_converged_valid_mpa, label='mpa converged valid')
+# axes[1].semilogy(EbN0_list, fer_converged_valid_spa, label='spa converged valid')
+axes[1].grid()
+axes[1].legend()
+
+axes[2].set_title('Convergence')
+axes[2].plot(EbN0_list, converged_mpa, label='mpa')
+axes[2].plot(EbN0_list, converged_spa, label='spa')
+axes[2].plot(EbN0_list, converged_valid_mpa, label='mpa valid')
+axes[2].plot(EbN0_list, converged_valid_spa, label='spa valid')
+axes[2].grid()
+axes[2].legend()
+
+axes[3].plot(EbN0_list, ber_converged_valid_mpa, label='mpa ber converged valid')
+axes[3].plot(EbN0_list, ber_converged_valid_spa, label='spa ber converged valid')
+axes[3].plot(EbN0_list, fer_converged_valid_mpa, label='mpa fer converged valid')
+axes[3].plot(EbN0_list, fer_converged_valid_spa, label='spa fer converged valid')
+axes[3].grid()
+axes[3].legend()
 
 plt.xlabel(r"$E_\mathrm{b}/N_0$ (dB)", fontsize=16)
-plt.ylabel("BER",fontsize=14)
-plt.grid()
 plt.show()
+
+pass

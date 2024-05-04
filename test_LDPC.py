@@ -22,6 +22,13 @@ class TestLDPC(unittest.TestCase):
     H = np.array([[1, 0, 1, 0, 0],
                   [0, 1, 1, 0, 1],
                   [0, 0, 0, 1, 1]], dtype=int)
+    
+    # Hamming Code contains cycles -> should not work
+    # H = np.array([
+    #         [1, 0, 1, 0, 1, 0, 1],
+    #         [0, 1, 1, 0, 0, 1, 1],
+    #         [0, 0, 0, 1, 1, 1, 1]], dtype=int)
+
     EbN0 = 2
     spa_iters = 5
 
