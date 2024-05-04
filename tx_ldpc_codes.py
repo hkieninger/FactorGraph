@@ -84,19 +84,21 @@ H_hamming= np.array([
     [1, 0, 1, 0, 1, 0, 1],
     [0, 1, 1, 0, 0, 1, 1],
     [0, 0, 0, 1, 1, 1, 1]], dtype=int)
-H_tree = np.array([[1, 0, 1, 0, 0],
-                [0, 1, 1, 0, 1],
-                [0, 0, 0, 1, 1]], dtype=int)
+# H_tree = np.array([
+#     [1, 0, 1, 0, 0],
+#     [0, 1, 1, 0, 1],
+#     [0, 0, 0, 1, 1]], dtype=int)
+H_tree = np.load('codes/random_acyclic_LDPC.npy')
 bch_63_45 = np.load('codes/BCH_63_45.npz')['H']
 istc_39_24 = np.load('codes/ISTC39_24_opt_Nils.npz')['Hopt']
 golay_24_12 = np.load('codes/opt_golay24_12_with_ends_even_more_weights.npz')['Hopt']
 
-code3 = LDPC.LDPC_code(bch_63_45)
+code3 = LDPC.LDPC_code(H_tree)
 
 code = code3
 
 # Simulation parameters
-num_bits = 10000
+num_bits = 100000
 spa_iters = 20
 EbN0_list = np.arange(0,4,0.5)
 
@@ -128,9 +130,13 @@ axes[1].legend()
 
 axes[2].set_title('Convergence')
 axes[2].plot(EbN0_list, converged_mpa, label='mpa')
+print(f'converged mpa: {converged_mpa}')
 axes[2].plot(EbN0_list, converged_spa, label='spa')
+print(f'converged spa: {converged_spa}')
 axes[2].plot(EbN0_list, converged_valid_mpa, label='mpa valid')
+print(f'converged valid mpa: {converged_valid_mpa}')
 axes[2].plot(EbN0_list, converged_valid_spa, label='spa valid')
+print(f'converged valid spa: {converged_valid_spa}')
 axes[2].grid()
 axes[2].legend()
 

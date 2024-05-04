@@ -5,6 +5,7 @@
 ####################################################
 import numpy as np
 import numpy.linalg as la
+import galois
 
 class LDPC_code:
     """
@@ -50,7 +51,7 @@ class LDPC_code:
         size      = str.split(data[0])
         numCols   = int(size[0])
         numRows   = int(size[1])
-        H = np.zeros((numRows,numCols))
+        H = np.zeros((numRows,numCols), dtype=np.int8)
         for lineNumber in np.arange(4,4+numCols):
           line = np.fromstring(data[lineNumber], dtype=int, sep=' ')
           for index in line[line != 0]:
@@ -62,10 +63,8 @@ class LDPC_code:
         This function computes the corresponding generator matrix G to the given
         parity check matrix H.
         """
-        A = self.H[:, : self.k]
-        B = self.H[:, self.k :]
-        F = A.T @ np.linalg.inv(B.T)
-        G = np.concatenate((np.eye(self.k), F), axis=1)
+        GF = galois.GF(2)
+        G = np.array(GF(self.H).null_space(), dtype=np.int8)
         # Sanity check.
         assert not np.any((G @ self.H.T) % 2)
         return G
