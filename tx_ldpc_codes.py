@@ -95,7 +95,7 @@ golay_24_12 = np.load('codes/opt_golay24_12_with_ends_even_more_weights.npz')['H
 
 code3 = LDPC.LDPC_code(H_tree)
 
-code = code3
+code = code2
 
 # Simulation parameters
 num_bits = 100000

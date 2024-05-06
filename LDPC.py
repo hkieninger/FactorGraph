@@ -20,12 +20,12 @@ class LDPC_code:
         # Read H from alist file and set parameters of LDPC code.
         self.H = parity_check_matrix
         (self.m, self.n) = self.H.shape
-        self.k = self.n - self.m
         self.dv_max = np.max(np.sum(self.H, axis=0)).astype(int) # Maximum variable node degree
         self.dc_max = np.max(np.sum(self.H, axis=1)).astype(int) # Maximum check node degree
 
         # Compute generator matrix G.
         self.G = self.make_gen()
+        self.k = self.G.shape[0]
 
         # Preparative computations which only need to be carried out once for a given H.
         (self.row, self.col, self.c_mask, self.c2v_reshape, self.v_mask, self.v2c_reshape) = self.prepare_decoder() 
