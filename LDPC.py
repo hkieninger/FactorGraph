@@ -128,7 +128,7 @@ class LDPC_code:
             # VN Update.
             v2c[self.c_mask] = np.take_along_axis((output_LLR[:,None] - self.c2v_vview)[self.v_mask], self.v2c_reshape, axis=0)
 
-    def decode_awgn(self, rx, esn0_lin, max_iters, convergence_threshold=1e-5, max_product=False):
+    def decode_awgn(self, rx, esn0_lin, max_iters, convergence_threshold=1e-7, max_product=False):
         '''
         run spa on rx
         @return: wether spa converged and LLR for the bits

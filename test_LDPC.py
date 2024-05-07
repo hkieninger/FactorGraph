@@ -19,10 +19,10 @@ class TestLDPC(unittest.TestCase):
 
     num_cws = 100000
     # parity check matrix of code without cycles
-    H = np.array([[1, 0, 1, 0, 0],
-                  [0, 1, 1, 0, 1],
-                  [0, 0, 0, 1, 1]], dtype=int)
-    # H = np.load('codes/random_acyclic_LDPC.npy')
+    # H = np.array([[1, 0, 1, 0, 0],
+    #               [0, 1, 1, 0, 1],
+    #               [0, 0, 0, 1, 1]], dtype=int)
+    H = np.load('codes/random_acyclic_LDPC.npy')
     
     # Hamming Code contains cycles -> should not work
     # H = np.array([
@@ -31,7 +31,7 @@ class TestLDPC(unittest.TestCase):
     #         [0, 0, 0, 1, 1, 1, 1]], dtype=int)
 
     EbN0 = 2
-    spa_iters = 20
+    spa_iters = 6
 
     def setUp(self):
         '''
